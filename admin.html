@@ -256,7 +256,7 @@
 </div>
 
 <script>
-var AS_URL   = "https://script.google.com/macros/s/AKfycbw19-IYtOo3TcW9YP4VH_703xnnzbL4s43bLDi47UD8IZl5OCn7c0oltxcus7g_Gfei/exec"; // ← même URL que depot.html
+var AS_URL   = "METTRE_URL_APPS_SCRIPT_ICI"; // ← même URL que depot.html
 var adminPwd = "";
 var adminData = {};
 
@@ -458,13 +458,28 @@ function showAlert(id, msg, type) {
   el.textContent = msg; el.className = "alert alert-" + type + " show";
 }
 
+var _cbIdx = 0;
 function post(params, cb) {
-  var fd = new FormData();
-  for (var k in params) fd.append(k, params[k]);
-  fetch(AS_URL, { method:"POST", body:fd })
-    .then(function(r){ return r.json(); })
-    .then(cb)
-    .catch(function(){ cb({ ok:false, message:"Erreur réseau" }); });
+  var cbName = "_adm_cb_" + (++_cbIdx);
+  var url = AS_URL + "?callback=" + cbName;
+  for (var k in params) url += "&" + encodeURIComponent(k) + "=" + encodeURIComponent(params[k]);
+
+  var timeout = setTimeout(function() {
+    delete window[cbName];
+    cb({ ok: false, message: "Erreur réseau" });
+  }, 30000);
+
+  window[cbName] = function(data) {
+    clearTimeout(timeout);
+    delete window[cbName];
+    cb(data);
+  };
+
+  var s = document.createElement("script");
+  s.src = url;
+  s.onerror = function() { clearTimeout(timeout); delete window[cbName]; cb({ ok:false, message:"Erreur réseau" }); };
+  document.head.appendChild(s);
+  setTimeout(function(){ if(s.parentNode) s.parentNode.removeChild(s); }, 35000);
 }
 
 // Enter sur le champ password
