@@ -338,7 +338,7 @@
 
 <script>
 // ── CONFIG ──────────────────────────────────────────────────
-var AS_URL = "https://script.google.com/macros/s/AKfycbw19-IYtOo3TcW9YP4VH_703xnnzbL4s43bLDi47UD8IZl5OCn7c0oltxcus7g_Gfei/exec"; // ← à remplir après déploiement
+var AS_URL = "METTRE_URL_APPS_SCRIPT_ICI"; // ← à remplir après déploiement
 
 // Récupère le nom d'événement depuis l'URL : depot.html?event=AGAD2026
 var EVENT_ID = new URLSearchParams(window.location.search).get("event") || "";
@@ -568,14 +568,65 @@ function genId() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
-// POST vers Apps Script
+// Appel JSONP vers Apps Script (contourne CORS)
+// Pour upload : le fileData est envoyé via un iframe form POST
+var _cbIndex = 0;
 function post(params, cb) {
-  var fd = new FormData();
-  for (var k in params) fd.append(k, params[k]);
-  fetch(AS_URL, { method:"POST", body:fd })
-    .then(function(r){ return r.json(); })
-    .then(cb)
-    .catch(function(){ cb({ ok:false, message:"Erreur réseau — réessayez" }); });
+  var cbName = "_dm_cb_" + (++_cbIndex);
+  var url = AS_URL + "?callback=" + cbName;
+  var body = {};
+  for (var k in params) body[k] = params[k];
+
+  var timeout = setTimeout(function() {
+    delete window[cbName];
+    cb({ ok: false, message: "Erreur réseau — réessayez" });
+  }, 120000);
+
+  window[cbName] = function(data) {
+    clearTimeout(timeout);
+    delete window[cbName];
+    cb(data);
+  };
+
+  // Si pas de fileData : JSONP GET simple
+  if (!body.fileData) {
+    var qUrl = url;
+    for (var k in body) qUrl += "&" + encodeURIComponent(k) + "=" + encodeURIComponent(body[k]);
+    var s = document.createElement("script");
+    s.src = qUrl;
+    s.onerror = function() { clearTimeout(timeout); delete window[cbName]; cb({ ok:false, message:"Erreur réseau" }); };
+    document.head.appendChild(s);
+    setTimeout(function(){ if(s.parentNode) s.parentNode.removeChild(s); }, 125000);
+    return;
+  }
+
+  // Avec fileData : form POST dans iframe caché
+  var iframeName = "_dm_iframe_" + _cbIndex;
+  var iframe = document.createElement("iframe");
+  iframe.name = iframeName;
+  iframe.style.display = "none";
+  document.body.appendChild(iframe);
+
+  var form = document.createElement("form");
+  form.method = "POST";
+  form.action = url;
+  form.target = iframeName;
+  form.style.display = "none";
+
+  for (var k in body) {
+    var inp = document.createElement("input");
+    inp.type = "hidden";
+    inp.name = k;
+    inp.value = body[k];
+    form.appendChild(inp);
+  }
+  document.body.appendChild(form);
+  form.submit();
+
+  setTimeout(function() {
+    if(iframe.parentNode) iframe.parentNode.removeChild(iframe);
+    if(form.parentNode) form.parentNode.removeChild(form);
+  }, 125000);
 }
 </script>
 </body>
