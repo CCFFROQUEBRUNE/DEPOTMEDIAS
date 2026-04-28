@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — DEPOTMEDIAS</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
+
+  :root {
+    --bg:      #0a0f14;
+    --surface: #111820;
+    --card:    #161f2a;
+    --border:  #243040;
+    --accent:  #e85d26;
+    --ok:      #27ae60;
+    --err:     #e74c3c;
+    --warn:    #f5a623;
+    --text:    #dde5ee;
+    --muted:   #6a7f96;
+    --radius:  12px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Outfit', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  /* ── LOGIN ── */
+  #login-screen {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; min-height: 100vh; padding: 24px;
+  }
+  .login-box {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 36px 32px; width: 100%; max-width: 360px;
+  }
+  .login-box h1 { font-size: 1.4rem; margin-bottom: 6px; }
+  .login-box p  { font-size: .85rem; color: var(--muted); margin-bottom: 24px; }
+
+  /* ── LAYOUT ADMIN ── */
+  #admin-screen { display: none; }
+
+  .topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 28px;
+    position: sticky; top: 0; z-index: 10;
+  }
+  .topbar h1 { font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+  .topbar .badge-admin {
+    background: var(--accent); color: #fff;
+    font-size: .65rem; font-weight: 700; letter-spacing: .08em;
+    padding: 2px 8px; border-radius: 999px; text-transform: uppercase;
+  }
+
+  .main { padding: 24px 28px; max-width: 1100px; margin: 0 auto; }
+
+  /* ── SECTION TITLE ── */
+  .section-title {
+    font-size: .7rem; font-weight: 700; letter-spacing: .15em;
+    text-transform: uppercase; color: var(--accent);
+    margin: 28px 0 14px;
+  }
+
+  /* ── EVENT CARDS ── */
+  .events-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 16px;
+  }
+
+  .event-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .event-card-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  .event-card-header h3 { font-size: .95rem; font-weight: 700; }
+
+  .toggle {
+    width: 44px; height: 24px;
+    background: var(--border); border-radius: 999px;
+    position: relative; cursor: pointer; transition: background .2s; border: none;
+  }
+  .toggle::after {
+    content: ''; position: absolute;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: #fff; top: 3px; left: 3px;
+    transition: transform .2s;
+  }
+  .toggle.on { background: var(--ok); }
+  .toggle.on::after { transform: translateX(20px); }
+
+  .event-card-body { padding: 16px 18px; display: flex; flex-direction: column; gap: 14px; }
+
+  .field-row { display: flex; flex-direction: column; gap: 4px; }
+  .field-row label { font-size: .72rem; color: var(--muted); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+  .field-row input {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); font-family: 'Outfit', monospace; font-size: .95rem;
+    padding: 9px 12px; outline: none; transition: border-color .2s;
+  }
+  .field-row input:focus { border-color: var(--accent); }
+
+  .fields-inline { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+
+  .btn-save {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    background: var(--accent); color: #fff; border: none; border-radius: 8px;
+    padding: 10px; font-family: 'Outfit', sans-serif; font-weight: 600;
+    font-size: .85rem; cursor: pointer; transition: opacity .15s;
+    width: 100%; margin-top: 4px;
+  }
+  .btn-save:hover { opacity: .85; }
+
+  /* ── LOGS TABLE ── */
+  .logs-wrap {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden; margin-top: 8px;
+  }
+  .logs-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 18px; border-bottom: 1px solid var(--border);
+  }
+  .logs-header h4 { font-size: .85rem; font-weight: 600; }
+
+  table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+  th {
+    text-align: left; padding: 10px 14px;
+    font-size: .68rem; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--muted);
+    border-bottom: 1px solid var(--border);
+  }
+  td { padding: 9px 14px; border-bottom: 1px solid rgba(255,255,255,.04); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,.02); }
+
+  .tag {
+    display: inline-block; padding: 2px 8px; border-radius: 6px;
+    font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+  }
+  .tag-photo { background: rgba(39,174,96,.18);  color: #5dde8f; }
+  .tag-video { background: rgba(232,93,38,.18);  color: #ff8a65; }
+
+  .btn-reset-session {
+    background: transparent; border: 1px solid var(--border); border-radius: 6px;
+    color: var(--muted); font-size: .72rem; padding: 3px 9px; cursor: pointer;
+    font-family: 'Outfit', sans-serif;
+  }
+  .btn-reset-session:hover { border-color: var(--err); color: var(--err); }
+
+  /* ── STATS STRIP ── */
+  .stats-strip {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 8px;
+  }
+  .stat-box {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 18px;
+  }
+  .stat-box .sv { font-size: 1.6rem; font-weight: 700; margin-bottom: 2px; }
+  .stat-box .sl { font-size: .72rem; color: var(--muted); }
+
+  /* ── INPUTS génériques ── */
+  input[type=password], input[type=text] {
+    background: var(--bg); border: 1.5px solid var(--border); border-radius: 10px;
+    color: var(--text); font-family: 'Outfit', sans-serif; font-size: .95rem;
+    padding: 12px 14px; outline: none; width: 100%;
+    transition: border-color .2s;
+  }
+  input:focus { border-color: var(--accent); }
+
+  .btn-primary {
+    background: var(--accent); color: #fff; border: none; border-radius: 10px;
+    padding: 13px; font-family: 'Outfit', sans-serif; font-weight: 700;
+    font-size: .95rem; cursor: pointer; width: 100%; margin-top: 12px;
+    transition: opacity .15s;
+  }
+  .btn-primary:hover { opacity: .85; }
+
+  .alert { border-radius: 8px; padding: 10px 14px; font-size: .83rem; margin-top: 10px; display:none; }
+  .alert.show { display: block; }
+  .alert-err { background: rgba(231,76,60,.15); border: 1px solid rgba(231,76,60,.3); color: #ff8f85; }
+  .alert-ok  { background: rgba(39,174,96,.15);  border: 1px solid rgba(39,174,96,.3);  color: #5dde8f; }
+
+  .empty-state { padding: 24px; text-align: center; color: var(--muted); font-size: .85rem; }
+
+  .btn-logout {
+    background: transparent; border: 1px solid var(--border); border-radius: 8px;
+    color: var(--muted); padding: 6px 14px; font-family: 'Outfit', sans-serif;
+    font-size: .8rem; cursor: pointer;
+  }
+  .btn-logout:hover { border-color: var(--err); color: var(--err); }
+
+  @media(max-width:600px) {
+    .main { padding: 16px; }
+    .stats-strip { grid-template-columns: 1fr 1fr; }
+    .topbar { padding: 12px 16px; }
+    .fields-inline { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── LOGIN ── -->
+<div id="login-screen">
+  <div class="login-box">
+    <h1>🔐 Console Admin</h1>
+    <p>DEPOTMEDIAS — CCFF RSA</p>
+    <input type="password" id="pwd-input" placeholder="Mot de passe admin"
+           onkeydown="if(event.key==='Enter')login()">
+    <button class="btn-primary" onclick="login()">Connexion</button>
+    <div class="alert alert-err" id="alert-login"></div>
+  </div>
+</div>
+
+<!-- ── ADMIN ── -->
+<div id="admin-screen">
+  <div class="topbar">
+    <h1>🔥 DEPOTMEDIAS <span class="badge-admin">Admin</span></h1>
+    <button class="btn-logout" onclick="logout()">Déconnexion</button>
+  </div>
+
+  <div class="main">
+
+    <!-- Stats globales -->
+    <div class="section-title">Vue d'ensemble</div>
+    <div class="stats-strip" id="stats-strip">
+      <div class="stat-box"><div class="sv" id="stat-events">—</div><div class="sl">Événements actifs</div></div>
+      <div class="stat-box"><div class="sv" id="stat-uploads">—</div><div class="sl">Fichiers déposés</div></div>
+      <div class="stat-box"><div class="sv" id="stat-volume">—</div><div class="sl">Volume total</div></div>
+      <div class="stat-box"><div class="sv" id="stat-sessions">—</div><div class="sl">Bénévoles uniques</div></div>
+    </div>
+
+    <!-- Événements -->
+    <div class="section-title">Configuration des événements</div>
+    <div class="events-grid" id="events-grid">
+      <div class="empty-state">Chargement...</div>
+    </div>
+
+    <!-- Logs -->
+    <div class="section-title">Journal des dépôts</div>
+    <div id="logs-section"></div>
+
+  </div>
+</div>
+
+<script>
+var AS_URL   = "METTRE_URL_APPS_SCRIPT_ICI"; // ← même URL que depot.html
+var adminPwd = "";
+var adminData = {};
+
+// ── LOGIN ────────────────────────────────────────────────────
+function login() {
+  var pwd = document.getElementById("pwd-input").value;
+  post({ action:"adminLogin", password:pwd }, function(r) {
+    if (r.ok) {
+      adminPwd = pwd;
+      document.getElementById("login-screen").style.display = "none";
+      document.getElementById("admin-screen").style.display = "block";
+      chargerData();
+    } else {
+      showAlert("alert-login", r.message || "Erreur", "err");
+    }
+  });
+}
+
+function logout() {
+  adminPwd = ""; adminData = {};
+  document.getElementById("admin-screen").style.display = "none";
+  document.getElementById("login-screen").style.display = "flex";
+  document.getElementById("pwd-input").value = "";
+}
+
+// ── CHARGEMENT ───────────────────────────────────────────────
+function chargerData() {
+  post({ action:"adminGetData", password:adminPwd }, function(r) {
+    if (!r.ok) { alert("Erreur chargement : " + r.message); return; }
+    adminData = r.data;
+    renderStats();
+    renderEvents();
+    renderLogs();
+  });
+}
+
+// ── STATS ────────────────────────────────────────────────────
+function renderStats() {
+  var actifs = 0, uploads = 0, volume = 0, sessions = new Set();
+  for (var id in adminData) {
+    var ev = adminData[id];
+    if (ev.active) actifs++;
+    (ev.uploads||[]).forEach(function(u) {
+      uploads++; volume += u.sizeMo||0; sessions.add(u.session);
+    });
+  }
+  document.getElementById("stat-events").textContent  = actifs;
+  document.getElementById("stat-uploads").textContent = uploads;
+  document.getElementById("stat-volume").textContent  = formatMo(volume);
+  document.getElementById("stat-sessions").textContent= sessions.size;
+}
+
+// ── EVENTS ───────────────────────────────────────────────────
+function renderEvents() {
+  var grid = document.getElementById("events-grid");
+  grid.innerHTML = "";
+  for (var id in adminData) {
+    grid.appendChild(buildEventCard(id, adminData[id]));
+  }
+}
+
+function buildEventCard(id, ev) {
+  var div = document.createElement("div");
+  div.className = "event-card";
+  div.id = "card_" + id;
+
+  var activeClass = ev.active ? "on" : "";
+  div.innerHTML =
+    '<div class="event-card-header">' +
+      '<h3>' + esc(ev.label || id) + ' <small style="color:var(--muted);font-size:.75rem;">(' + id + ')</small></h3>' +
+      '<button class="toggle ' + activeClass + '" id="tog_'+id+'" onclick="toggleActive(\''+id+'\')" title="Activer/Désactiver les dépôts"></button>' +
+    '</div>' +
+    '<div class="event-card-body">' +
+      '<div class="field-row">' +
+        '<label>Code d\'accès (4 chiffres)</label>' +
+        '<input type="text" id="code_'+id+'" value="'+esc(ev.code)+'" maxlength="4" inputmode="numeric">' +
+      '</div>' +
+      '<div class="fields-inline">' +
+        '<div class="field-row"><label>Quota Mo/bénévole</label><input type="number" id="quota_'+id+'" value="'+ev.quotaMo+'" min="1"></div>' +
+        '<div class="field-row"><label>Max Photo Mo</label><input type="number" id="mxp_'+id+'" value="'+ev.maxPhotoMo+'" min="1"></div>' +
+        '<div class="field-row"><label>Max Vidéo Mo</label><input type="number" id="mxv_'+id+'" value="'+ev.maxVideoMo+'" min="1"></div>' +
+      '</div>' +
+      '<button class="btn-save" onclick="sauvegarder(\''+id+'\')">💾 Sauvegarder</button>' +
+      '<div class="alert" id="alert_'+id+'"></div>' +
+      '<div style="text-align:right;margin-top:4px;">' +
+        '<button class="btn-reset-session" onclick="resetEvent(\''+id+'\')">🗑 Réinitialiser tous les quotas</button>' +
+      '</div>' +
+    '</div>';
+  return div;
+}
+
+function toggleActive(id) {
+  var tog = document.getElementById("tog_" + id);
+  var isOn = tog.classList.toggle("on");
+  adminData[id].active = isOn;
+  post({ action:"adminSave", password:adminPwd, eventId:id, active: String(isOn) }, function(r) {
+    showEvAlert(id, r.ok ? "Statut mis à jour" : r.message, r.ok ? "ok" : "err");
+  });
+}
+
+function sauvegarder(id) {
+  var code  = document.getElementById("code_" + id).value.trim();
+  var quota = document.getElementById("quota_" + id).value;
+  var mxp   = document.getElementById("mxp_"  + id).value;
+  var mxv   = document.getElementById("mxv_"  + id).value;
+  if (code.length !== 4 || !/^\d{4}$/.test(code)) {
+    showEvAlert(id, "Le code doit être exactement 4 chiffres", "err"); return;
+  }
+  post({
+    action:"adminSave", password:adminPwd, eventId:id,
+    code:code, quotaMo:quota, maxPhotoMo:mxp, maxVideoMo:mxv
+  }, function(r) {
+    showEvAlert(id, r.ok ? "✅ Sauvegardé" : r.message, r.ok ? "ok" : "err");
+    if (r.ok) { adminData[id].code=code; adminData[id].quotaMo=parseFloat(quota); }
+  });
+}
+
+function resetEvent(id) {
+  if (!confirm("Réinitialiser TOUS les quotas de " + id + " ?")) return;
+  post({ action:"adminReset", password:adminPwd, eventId:id }, function(r) {
+    showEvAlert(id, r.ok ? "Quotas réinitialisés" : r.message, r.ok ? "ok" : "err");
+    if (r.ok) { adminData[id].uploads = []; renderStats(); renderLogs(); }
+  });
+}
+
+function showEvAlert(id, msg, type) {
+  var el = document.getElementById("alert_" + id);
+  el.textContent  = msg;
+  el.className    = "alert alert-" + type + " show";
+  setTimeout(function(){ el.className = "alert"; }, 3000);
+}
+
+// ── LOGS ─────────────────────────────────────────────────────
+function renderLogs() {
+  var sec = document.getElementById("logs-section");
+  sec.innerHTML = "";
+
+  for (var id in adminData) {
+    var ev   = adminData[id];
+    var logs = ev.uploads || [];
+
+    var wrap = document.createElement("div");
+    wrap.className = "logs-wrap";
+    wrap.style.marginBottom = "16px";
+
+    var header = '<div class="logs-header">' +
+      '<h4>' + esc(ev.label||id) + ' — ' + logs.length + ' dépôt(s)</h4>' +
+    '</div>';
+
+    if (logs.length === 0) {
+      wrap.innerHTML = header + '<div class="empty-state">Aucun dépôt pour le moment</div>';
+    } else {
+      var rows = logs.slice().reverse().map(function(u) {
+        var dt = new Date(u.ts);
+        var ds = ("0"+(dt.getMonth()+1)).slice(-2)+"/"+("0"+dt.getDate()).slice(-2)+
+                 " "+("0"+dt.getHours()).slice(-2)+":"+("0"+dt.getMinutes()).slice(-2);
+        return '<tr>' +
+          '<td>' + ds + '</td>' +
+          '<td style="font-size:.78rem;color:var(--muted);font-family:monospace;">' + u.session.slice(0,8) + '…</td>' +
+          '<td>' + esc(u.file) + '</td>' +
+          '<td><span class="tag tag-' + u.type + '">' + u.type + '</span></td>' +
+          '<td>' + u.sizeMo + ' Mo</td>' +
+          '<td><button class="btn-reset-session" onclick="resetSession(\''+id+'\',\''+u.session+'\')">Reset quota</button></td>' +
+        '</tr>';
+      }).join("");
+
+      wrap.innerHTML = header +
+        '<table>' +
+          '<thead><tr><th>Date</th><th>Session</th><th>Fichier</th><th>Type</th><th>Taille</th><th>Action</th></tr></thead>' +
+          '<tbody>' + rows + '</tbody>' +
+        '</table>';
+    }
+    sec.appendChild(wrap);
+  }
+}
+
+function resetSession(eventId, sessionId) {
+  if (!confirm("Réinitialiser le quota de cette session ?")) return;
+  post({ action:"adminReset", password:adminPwd, eventId:eventId, sessionId:sessionId }, function(r) {
+    alert(r.ok ? "Quota réinitialisé" : r.message);
+    if (r.ok) chargerData();
+  });
+}
+
+// ── HELPERS ─────────────────────────────────────────────────
+function formatMo(mo) {
+  if (!mo) return "0 Mo";
+  if (mo >= 1024) return (Math.round(mo/102.4)/10) + " Go";
+  return (Math.round(mo*10)/10) + " Mo";
+}
+
+function esc(s) {
+  if (!s) return "";
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+function showAlert(id, msg, type) {
+  var el = document.getElementById(id);
+  el.textContent = msg; el.className = "alert alert-" + type + " show";
+}
+
+function post(params, cb) {
+  var fd = new FormData();
+  for (var k in params) fd.append(k, params[k]);
+  fetch(AS_URL, { method:"POST", body:fd })
+    .then(function(r){ return r.json(); })
+    .then(cb)
+    .catch(function(){ cb({ ok:false, message:"Erreur réseau" }); });
+}
+
+// Enter sur le champ password
+document.getElementById("pwd-input").addEventListener("keydown", function(e) {
+  if (e.key === "Enter") login();
+});
+</script>
+</body>
+</html>
