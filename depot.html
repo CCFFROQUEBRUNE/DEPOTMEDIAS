@@ -80,7 +80,7 @@ footer{margin-top:auto;padding-top:30px;font-size:.72rem;color:var(--muted);text
   </div>
   <label style="font-size:.85rem;color:var(--muted);display:block;margin-bottom:10px;">Entrez votre code d'accès (4 chiffres)</label>
   <div class="code-row">
-    <input type="tel" id="code-input" class="code-input" maxlength="4" placeholder="••••" autocomplete="off" inputmode="numeric" aria-label="Code d'accès">
+    <input type="tel" id="code-input" class="code-input" maxlength="4" placeholder="••••" autocomplete="off" inputmode="numeric" aria-label="Code accès">
     <button class="btn btn-validate" id="btn-validate" onclick="validerCode()">OK</button>
   </div>
   <div class="alert alert-err" id="alert-code"></div>
@@ -88,8 +88,6 @@ footer{margin-top:auto;padding-top:30px;font-size:.72rem;color:var(--muted);text
 
 <div class="card" id="step-upload">
   <div class="card-title">Déposer vos médias</div>
-
-  <!-- Quotas séparés -->
   <div class="quota-grid">
     <div class="quota-box">
       <div class="qb-header">
@@ -106,9 +104,8 @@ footer{margin-top:auto;padding-top:30px;font-size:.72rem;color:var(--muted);text
       <div class="quota-bar-wrap"><div class="quota-bar video" id="quota-video-bar" style="width:0%"></div></div>
     </div>
   </div>
-
   <div class="dropzone" id="dropzone" style="margin-top:16px;">
-    <input type="file" id="file-input" multiple accept="image/*,video/*" onchange="onFilesSelected(this.files)" aria-label="Sélectionner des fichiers">
+    <input type="file" id="file-input" multiple accept="image/*,video/*" onchange="onFilesSelected(this.files)" aria-label="Sélectionner fichiers">
     <div class="dz-icon">&#128248;</div>
     <div class="dz-title">Appuyez pour ajouter des fichiers</div>
     <div class="dz-sub">Photos et vidéos acceptées<br>Max <span id="max-photo">30</span> Mo/photo · <span id="max-video">100</span> Mo/vidéo</div>
@@ -128,7 +125,7 @@ footer{margin-top:auto;padding-top:30px;font-size:.72rem;color:var(--muted);text
   </div>
 </div>
 
-<footer>CCFF RSA · Dépôt sécurisé · v4.0</footer>
+<footer>CCFF RSA · Dépôt sécurisé · v5.0</footer>
 
 <script>
 var AS_URL     = "https://script.google.com/macros/s/AKfycbw19-IYtOo3TcW9YP4VH_703xnnzbL4s43bLDi47UD8IZl5OCn7c0oltxcus7g_Gfei/exec";
@@ -217,7 +214,7 @@ function envoyerFichiers() {
   var pending = fichiersQueue.filter(function(f){ return f.status==="pending"; });
   if (!pending.length) return;
   document.getElementById("btn-upload").disabled = true;
-  envoyerSuivant(pending, 0, {photo:0, video:0}, []);
+  envoyerSuivant(pending, 0, {photo:0,video:0}, []);
 }
 
 function envoyerSuivant(queue, idx, totalMo, results) {
@@ -237,61 +234,108 @@ function envoyerSuivant(queue, idx, totalMo, results) {
     return;
   }
 
-  var item = queue[idx];
+  var item   = queue[idx];
+  var sizeMo = item.file.size/(1024*1024);
   item.status = "uploading"; renderFileList();
 
-  var reader = new FileReader();
-  reader.onload = function(ev) {
-    var b64 = ev.target.result.split(",")[1];
-    var pb  = document.getElementById("pb"+idx);
-    if (pb) pb.style.width = "30%";
+  function setProgress(pct) {
+    var pb = document.getElementById("pb"+idx);
+    if (pb) pb.style.width = pct+"%";
+  }
 
-    var fd = new FormData();
-    fd.append("action",    "uploadFile");
-    fd.append("eventId",   EVENT_ID);
-    fd.append("code",      codeValide);
-    fd.append("sessionId", SESSION_ID);
-    fd.append("fileName",  item.file.name);
-    fd.append("mimeType",  item.file.type);
-    fd.append("fileData",  b64);
+  // Étape 1 : obtenir le token + nom fichier
+  callGET({
+    action:"getUploadToken", eventId:EVENT_ID, code:codeValide,
+    sessionId:SESSION_ID, fileName:item.file.name,
+    mimeType:item.file.type, sizeMo:String(Math.round(sizeMo*100)/100)
+  }, function(r) {
+    if (!r.ok) {
+      item.status="err"; item.msg=r.message||"Refusé";
+      results.push(r); renderFileList();
+      envoyerSuivant(queue, idx+1, totalMo, results);
+      return;
+    }
 
-    if (pb) pb.style.width = "60%";
+    setProgress(15);
+    var token    = r.token;
+    var folderId = r.folderId;
+    var newName  = r.newName;
+    var mimeType = r.mimeType;
 
-    fetch(AS_URL, { method:"POST", body:fd })
-      .then(function(resp){ if(pb) pb.style.width="90%"; return resp.json(); })
-      .then(function(r) {
-        if (pb) pb.style.width = "100%";
-        item.status = r.ok ? "ok" : "err";
-        item.msg    = r.ok ? ("✓ "+r.fileName) : (r.message||"Erreur");
-        results.push(r);
-        if (r.ok && r.type) totalMo[r.type] = (totalMo[r.type]||0) + (r.sizeMo||0);
-        renderFileList();
-        envoyerSuivant(queue, idx+1, totalMo, results);
-      })
-      .catch(function(err) {
-        item.status="err"; item.msg="Erreur réseau";
+    // Étape 2 : upload direct vers Google Drive API (multipart)
+    var metadata = JSON.stringify({ name: newName, parents: [folderId] });
+
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      setProgress(30);
+
+      // Construction multipart/related
+      var boundary = "dm_boundary_" + Date.now();
+      var metaPart = "--"+boundary+"
+Content-Type: application/json
+
+"+metadata+"
+";
+      var dataPart = "--"+boundary+"
+Content-Type: "+mimeType+"
+Content-Transfer-Encoding: base64
+
+"+ev.target.result.split(",")[1]+"
+--"+boundary+"--";
+      var body     = metaPart + dataPart;
+
+      setProgress(50);
+
+      var xhr = new XMLHttpRequest();
+      xhr.open("POST", "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", true);
+      xhr.setRequestHeader("Authorization", "Bearer " + token);
+      xhr.setRequestHeader("Content-Type", "multipart/related; boundary=" + boundary);
+
+      xhr.upload.onprogress = function(e) {
+        if (e.lengthComputable) setProgress(50 + Math.round(e.loaded/e.total*40));
+      };
+
+      xhr.onload = function() {
+        setProgress(90);
+        if (xhr.status === 200 || xhr.status === 201) {
+          // Étape 3 : confirmer à Apps Script pour logger
+          callGET({ action:"confirmUpload", newName:newName }, function(cr) {
+            setProgress(100);
+            item.status = cr.ok ? "ok" : "err";
+            item.msg    = cr.ok ? ("✓ "+newName) : (cr.message||"Erreur confirmation");
+            results.push(cr);
+            if (cr.ok && cr.type) totalMo[cr.type] = (totalMo[cr.type]||0) + (cr.sizeMo||0);
+            renderFileList();
+            envoyerSuivant(queue, idx+1, totalMo, results);
+          });
+        } else {
+          item.status="err"; item.msg="Erreur Drive ("+xhr.status+")";
+          results.push({ok:false}); renderFileList();
+          envoyerSuivant(queue, idx+1, totalMo, results);
+        }
+      };
+      xhr.onerror = function() {
+        item.status="err"; item.msg="Erreur réseau Drive";
         results.push({ok:false}); renderFileList();
         envoyerSuivant(queue, idx+1, totalMo, results);
-      });
-  };
-  reader.readAsDataURL(item.file);
+      };
+      xhr.send(body);
+    };
+    reader.readAsDataURL(item.file);
+  });
 }
 
 function rafraichirQuota() {
   callGET({ action:"getQuota", eventId:EVENT_ID, code:codeValide, sessionId:SESSION_ID }, function(r) {
     if (!r.ok) return;
-    // Photos
     var pctP = Math.min(100,(r.usedPhotoMo/r.quotaPhotoMo)*100);
     document.getElementById("quota-photo-text").textContent = formatMo(r.usedPhotoMo)+" / "+formatMo(r.quotaPhotoMo);
     var barP = document.getElementById("quota-photo-bar");
-    barP.style.width = pctP+"%";
-    barP.className   = "quota-bar photo"+(pctP>75?" warn":"");
-    // Vidéos
+    barP.style.width = pctP+"%"; barP.className="quota-bar photo"+(pctP>75?" warn":"");
     var pctV = Math.min(100,(r.usedVideoMo/r.quotaVideoMo)*100);
     document.getElementById("quota-video-text").textContent = formatMo(r.usedVideoMo)+" / "+formatMo(r.quotaVideoMo);
     var barV = document.getElementById("quota-video-bar");
-    barV.style.width = pctV+"%";
-    barV.className   = "quota-bar video"+(pctV>75?" warn":"");
+    barV.style.width = pctV+"%"; barV.className="quota-bar video"+(pctV>75?" warn":"");
   });
 }
 
@@ -311,7 +355,7 @@ function callGET(params, cb) {
   var n=++_cbIdx, key="_cb"+n;
   var url=AS_URL+"?callback="+key;
   for (var k in params) url+="&"+encodeURIComponent(k)+"="+encodeURIComponent(params[k]);
-  var tid=setTimeout(function(){ delete window[key]; cb({ok:false,message:"Timeout"}); },30000);
+  var tid=setTimeout(function(){ delete window[key]; cb({ok:false,message:"Timeout"}); },45000);
   window[key]=function(data){ clearTimeout(tid); delete window[key]; cb(data); };
   var s=document.createElement("script"); s.src=url;
   s.onerror=function(){ clearTimeout(tid); delete window[key]; cb({ok:false,message:"Erreur réseau"}); };
