@@ -44,7 +44,7 @@ header{width:100%;max-width:480px;display:flex;align-items:center;gap:12px;paddi
 .fi-name{font-size:.88rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .fi-size{font-size:.75rem;color:var(--muted);margin-top:2px;}
 .progress-bar-wrap{background:rgba(255,255,255,.08);border-radius:999px;height:6px;margin-top:8px;overflow:hidden;}
-.progress-bar{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:999px;transition:width .2s;}
+.progress-bar{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:999px;transition:width .3s;}
 .quota-wrap{margin-top:16px;}
 .quota-label{display:flex;justify-content:space-between;font-size:.78rem;color:var(--muted);margin-bottom:6px;}
 .quota-bar-wrap{background:var(--bg);border-radius:999px;height:8px;overflow:hidden;}
@@ -75,7 +75,7 @@ footer{margin-top:auto;padding-top:30px;font-size:.72rem;color:var(--muted);text
   </div>
   <label style="font-size:.85rem;color:var(--muted);display:block;margin-bottom:10px;">Entrez votre code d'accès (4 chiffres)</label>
   <div class="code-row">
-    <input type="tel" id="code-input" class="code-input" maxlength="4" placeholder="••••" autocomplete="off" inputmode="numeric">
+    <input type="tel" id="code-input" class="code-input" maxlength="4" placeholder="••••" autocomplete="off" inputmode="numeric" aria-label="Code d'accès">
     <button class="btn btn-validate" id="btn-validate" onclick="validerCode()">OK</button>
   </div>
   <div class="alert alert-err" id="alert-code"></div>
@@ -88,7 +88,7 @@ footer{margin-top:auto;padding-top:30px;font-size:.72rem;color:var(--muted);text
     <div class="quota-bar-wrap"><div class="quota-bar" id="quota-bar" style="width:0%"></div></div>
   </div>
   <div class="dropzone" id="dropzone" style="margin-top:20px;">
-    <input type="file" id="file-input" multiple accept="image/*,video/*" onchange="onFilesSelected(this.files)">
+    <input type="file" id="file-input" multiple accept="image/*,video/*" onchange="onFilesSelected(this.files)" aria-label="Sélectionner des fichiers">
     <div class="dz-icon">&#128248;</div>
     <div class="dz-title">Appuyez pour ajouter des fichiers</div>
     <div class="dz-sub">Photos et vidéos acceptées<br>Max <span id="max-photo">30</span> Mo/photo · <span id="max-video">100</span> Mo/vidéo</div>
@@ -108,7 +108,7 @@ footer{margin-top:auto;padding-top:30px;font-size:.72rem;color:var(--muted);text
   </div>
 </div>
 
-<footer>CCFF RSA · Dépôt sécurisé · v2.0</footer>
+<footer>CCFF RSA · Dépôt sécurisé · v3.0</footer>
 
 <script>
 var AS_URL     = "https://script.google.com/macros/s/AKfycbw19-IYtOo3TcW9YP4VH_703xnnzbL4s43bLDi47UD8IZl5OCn7c0oltxcus7g_Gfei/exec";
@@ -121,10 +121,9 @@ var quotaMo       = 30;
 var maxPhotoMo    = 30;
 var maxVideoMo    = 100;
 var fichiersQueue = [];
-var CHUNK_SIZE    = 500;
 
 window.onload = function() {
-  document.getElementById("event-label").textContent = EVENT_ID || "Événement non spécifié";
+  document.getElementById("event-label").textContent = EVENT_ID || "Evenement non specifie";
   document.getElementById("code-input").addEventListener("keydown", function(e){ if(e.key==="Enter") validerCode(); });
   var dz = document.getElementById("dropzone");
   dz.addEventListener("dragover",  function(e){ e.preventDefault(); dz.classList.add("drag"); });
@@ -137,7 +136,7 @@ function validerCode() {
   if (code.length !== 4) { showAlert("alert-code","Entrez 4 chiffres","err"); return; }
   var btn = document.getElementById("btn-validate");
   btn.disabled = true; btn.textContent = "...";
-  callAS({ action:"checkCode", eventId:EVENT_ID, code:code }, function(r) {
+  callGET({ action:"checkCode", eventId:EVENT_ID, code:code }, function(r) {
     btn.disabled = false; btn.textContent = "OK";
     if (r.ok) {
       codeValide = code; quotaMo = r.quotaMo||30; maxPhotoMo = r.maxPhotoMo||30; maxVideoMo = r.maxVideoMo||100;
@@ -159,7 +158,7 @@ function onFilesSelected(files) {
     var maxMo   = isVideo ? maxVideoMo : maxPhotoMo;
     var sizeMo  = f.size/(1024*1024);
     var status  = "pending", msg = formatMo(sizeMo);
-    if (!isPhoto && !isVideo) { status="err"; msg="Type non autorisé"; }
+    if (!isPhoto && !isVideo) { status="err"; msg="Type non autorise"; }
     else if (sizeMo > maxMo)  { status="err"; msg="Trop volumineux (max "+maxMo+" Mo)"; }
     fichiersQueue.push({file:f, status:status, msg:msg});
   });
@@ -178,7 +177,7 @@ function renderFileList() {
       '<div class="fi-info">'+
         '<div class="fi-name">'+esc(item.file.name)+'</div>'+
         '<div class="fi-size">'+item.msg+'</div>'+
-        (item.status==="uploading"?'<div class="progress-bar-wrap"><div class="progress-bar" id="pb'+i+'" style="width:0%"></div></div>':'')+
+        (item.status==="uploading"?'<div class="progress-bar-wrap"><div class="progress-bar" id="pb'+i+'" style="width:5%"></div></div>':'')+
       '</div>';
     el.appendChild(div);
   });
@@ -202,7 +201,8 @@ function envoyerSuivant(queue, idx, totalMo, results) {
     var err = results.filter(function(r){ return !r.ok; }).length;
     if (err === 0) {
       show("step-upload",false); show("step-done",true);
-      document.getElementById("done-summary").textContent = ok+" fichier"+(ok>1?"s":"")+" déposé"+(ok>1?"s":"")+" ("+formatMo(totalMo)+")";
+      document.getElementById("done-summary").textContent =
+        ok+" fichier"+(ok>1?"s":"")+" déposé"+(ok>1?"s":"")+" ("+formatMo(totalMo)+")";
     } else {
       showAlert("alert-upload", err+" fichier(s) en erreur.", "err");
       renderFileList(); majBtnUpload();
@@ -214,52 +214,46 @@ function envoyerSuivant(queue, idx, totalMo, results) {
   item.status = "uploading"; renderFileList();
 
   var reader = new FileReader();
-  reader.onload = function(e) {
-    var b64Full    = e.target.result.split(",")[1];
-    var uploadId   = genId();
-    var chunks     = [];
-    for (var i=0; i<b64Full.length; i+=CHUNK_SIZE) chunks.push(b64Full.slice(i,i+CHUNK_SIZE));
-    var totalChunks = chunks.length;
+  reader.onload = function(ev) {
+    var b64 = ev.target.result.split(",")[1];
+    var pb  = document.getElementById("pb"+idx);
+    if (pb) pb.style.width = "30%";
 
-    function setProgress(pct) { var pb=document.getElementById("pb"+idx); if(pb) pb.style.width=pct+"%"; }
+    // Envoi via fetch POST (pas de limite de taille)
+    var fd = new FormData();
+    fd.append("action",    "uploadFile");
+    fd.append("eventId",   EVENT_ID);
+    fd.append("code",      codeValide);
+    fd.append("sessionId", SESSION_ID);
+    fd.append("fileName",  item.file.name);
+    fd.append("mimeType",  item.file.type);
+    fd.append("fileData",  b64);
 
-    function envoyerChunk(ci) {
-      if (ci >= totalChunks) {
-        setProgress(95);
-        callAS({
-          action:"finalizeUpload", eventId:EVENT_ID, code:codeValide,
-          sessionId:SESSION_ID, uploadId:uploadId,
-          totalChunks:String(totalChunks), fileName:item.file.name, mimeType:item.file.type
-        }, function(r) {
-          setProgress(100);
-          item.status = r.ok ? "ok" : "err";
-          item.msg    = r.ok ? ("✓ "+r.fileName) : (r.message||"Erreur");
-          results.push(r); renderFileList();
-          envoyerSuivant(queue, idx+1, totalMo+(r.ok?r.sizeMo:0), results);
-        });
-        return;
-      }
-      callAS({
-        action:"uploadChunk", eventId:EVENT_ID, code:codeValide,
-        uploadId:uploadId, chunkIndex:String(ci), chunkData:chunks[ci]
-      }, function(r) {
-        if (!r.ok) {
-          item.status="err"; item.msg=r.message||"Erreur chunk "+ci;
-          results.push(r); renderFileList();
-          envoyerSuivant(queue, idx+1, totalMo, results);
-          return;
-        }
-        setProgress(Math.round((ci+1)/totalChunks*90));
-        envoyerChunk(ci+1);
+    if (pb) pb.style.width = "60%";
+
+    fetch(AS_URL, { method:"POST", body:fd })
+      .then(function(resp) {
+        if (pb) pb.style.width = "90%";
+        return resp.json();
+      })
+      .then(function(r) {
+        if (pb) pb.style.width = "100%";
+        item.status = r.ok ? "ok"  : "err";
+        item.msg    = r.ok ? ("✓ "+r.fileName) : (r.message||"Erreur");
+        results.push(r); renderFileList();
+        envoyerSuivant(queue, idx+1, totalMo+(r.ok?r.sizeMo:0), results);
+      })
+      .catch(function(err) {
+        item.status="err"; item.msg="Erreur réseau: "+err.message;
+        results.push({ok:false}); renderFileList();
+        envoyerSuivant(queue, idx+1, totalMo, results);
       });
-    }
-    envoyerChunk(0);
   };
   reader.readAsDataURL(item.file);
 }
 
 function rafraichirQuota() {
-  callAS({ action:"getQuota", eventId:EVENT_ID, code:codeValide, sessionId:SESSION_ID }, function(r) {
+  callGET({ action:"getQuota", eventId:EVENT_ID, code:codeValide, sessionId:SESSION_ID }, function(r) {
     if (!r.ok) return;
     var pct = Math.min(100,(r.usedMo/r.quotaMo)*100);
     document.getElementById("quota-text").textContent = formatMo(r.usedMo)+" / "+formatMo(r.quotaMo);
@@ -269,20 +263,25 @@ function rafraichirQuota() {
   });
 }
 
-function recommencer() { fichiersQueue=[]; show("step-done",false); show("step-upload",true); renderFileList(); majBtnUpload(); rafraichirQuota(); }
+function recommencer() {
+  fichiersQueue=[]; show("step-done",false); show("step-upload",true);
+  renderFileList(); majBtnUpload(); rafraichirQuota();
+}
+
 function show(id,v){ document.getElementById(id).style.display=v?"block":"none"; }
 function showAlert(id,msg,type){ var el=document.getElementById(id); el.textContent=msg; el.className="alert alert-"+type+" show"; }
 function formatMo(mo){ if(!mo||mo===0) return "0 Mo"; if(mo<1) return Math.round(mo*1024)+" Ko"; return (Math.round(mo*10)/10)+" Mo"; }
 function esc(s){ return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 function genId(){ return Math.random().toString(36).slice(2)+Date.now().toString(36); }
 
+// JSONP pour les petites requêtes (checkCode, getQuota)
 var _cbIdx = 0;
-function callAS(params, cb) {
+function callGET(params, cb) {
   var n   = ++_cbIdx;
-  var key = "_cb" + n;
-  var url = AS_URL + "?callback=" + key;
-  for (var k in params) url += "&" + encodeURIComponent(k) + "=" + encodeURIComponent(params[k]);
-  var tid = setTimeout(function(){ delete window[key]; cb({ok:false,message:"Timeout"}); }, 60000);
+  var key = "_cb"+n;
+  var url = AS_URL+"?callback="+key;
+  for (var k in params) url += "&"+encodeURIComponent(k)+"="+encodeURIComponent(params[k]);
+  var tid = setTimeout(function(){ delete window[key]; cb({ok:false,message:"Timeout"}); }, 30000);
   window[key] = function(data){ clearTimeout(tid); delete window[key]; cb(data); };
   var s = document.createElement("script");
   s.src = url;
