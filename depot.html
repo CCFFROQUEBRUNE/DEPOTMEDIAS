@@ -265,35 +265,25 @@ function envoyerSuivant(queue, idx, totalMo, results) {
     // Étape 2 : upload direct vers Google Drive API (multipart)
     var metadata = JSON.stringify({ name: newName, parents: [folderId] });
 
-    var reader = new FileReader();
-    reader.onload = function(ev) {
-      setProgress(30);
-
-      // Construction multipart/related
-      var boundary = "dm_boundary_" + Date.now();
-     var metaPart = "--"+boundary+"\r\nContent-Type: application/json\r\n\r\n"+metadata+"\r\n";
-      var dataPart = "--"+boundary+"\r\nContent-Type: "+mimeType+"\r\nContent-Transfer-Encoding: base64\r\n\r\n"+ev.target.result.split(",")[1]+"\r\n--"+boundary+"--";
-      var body     = metaPart + dataPart;
-
-      setProgress(50);
-
+// Upload binaire direct - FormData sans base64
+      setProgress(20);
+      var formData = new FormData();
+      formData.append("metadata", new Blob([metadata], {type:"application/json"}));
+      formData.append("file", item.file);
+      setProgress(35);
       var xhr = new XMLHttpRequest();
       xhr.open("POST", "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", true);
       xhr.setRequestHeader("Authorization", "Bearer " + token);
-      xhr.setRequestHeader("Content-Type", "multipart/related; boundary=" + boundary);
-
       xhr.upload.onprogress = function(e) {
-        if (e.lengthComputable) setProgress(50 + Math.round(e.loaded/e.total*40));
+        if (e.lengthComputable) setProgress(35 + Math.round(e.loaded/e.total*55));
       };
-
       xhr.onload = function() {
         setProgress(90);
         if (xhr.status === 200 || xhr.status === 201) {
-          // Étape 3 : confirmer à Apps Script pour logger
           callGET({ action:"confirmUpload", newName:newName }, function(cr) {
             setProgress(100);
             item.status = cr.ok ? "ok" : "err";
-            item.msg    = cr.ok ? ("✓ "+newName) : (cr.message||"Erreur confirmation");
+            item.msg    = cr.ok ? ("✓ "+newName) : (cr.message||"Erreur");
             results.push(cr);
             if (cr.ok && cr.type) totalMo[cr.type] = (totalMo[cr.type]||0) + (cr.sizeMo||0);
             renderFileList();
@@ -310,9 +300,7 @@ function envoyerSuivant(queue, idx, totalMo, results) {
         results.push({ok:false}); renderFileList();
         envoyerSuivant(queue, idx+1, totalMo, results);
       };
-      xhr.send(body);
-    };
-    reader.readAsDataURL(item.file);
+      xhr.send(formData);
   });
 }
 
