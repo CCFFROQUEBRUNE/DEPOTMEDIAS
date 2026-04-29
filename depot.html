@@ -271,17 +271,8 @@ function envoyerSuivant(queue, idx, totalMo, results) {
 
       // Construction multipart/related
       var boundary = "dm_boundary_" + Date.now();
-      var metaPart = "--"+boundary+"
-Content-Type: application/json
-
-"+metadata+"
-";
-      var dataPart = "--"+boundary+"
-Content-Type: "+mimeType+"
-Content-Transfer-Encoding: base64
-
-"+ev.target.result.split(",")[1]+"
---"+boundary+"--";
+     var metaPart = "--"+boundary+"\r\nContent-Type: application/json\r\n\r\n"+metadata+"\r\n";
+      var dataPart = "--"+boundary+"\r\nContent-Type: "+mimeType+"\r\nContent-Transfer-Encoding: base64\r\n\r\n"+ev.target.result.split(",")[1]+"\r\n--"+boundary+"--";
       var body     = metaPart + dataPart;
 
       setProgress(50);
