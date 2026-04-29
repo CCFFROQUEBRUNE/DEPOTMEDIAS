@@ -296,7 +296,7 @@ function envoyerSuivant(queue, idx, totalMo, results) {
         }
       };
       xhr.onerror = function() {
-        item.status="err"; item.msg="Erreur réseau Drive";
+        item.status="err"; item.msg="Drive err: "+xhr.status+" / "+xhr.responseText.slice(0,100);
         results.push({ok:false}); renderFileList();
         envoyerSuivant(queue, idx+1, totalMo, results);
       };
