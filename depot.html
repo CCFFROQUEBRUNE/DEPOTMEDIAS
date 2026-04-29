@@ -297,11 +297,10 @@ function envoyerSuivant(queue, idx, totalMo, results) {
         }
       };
       xhr.onerror = function() {
-        item.status="err"; item.msg="Drive err: "+xhr.status+" / "+xhr.responseText.slice(0,100); alert("XHR status="+xhr.status+" state="+xhr.readyState+" resp="+xhr.responseText.slice(0,100));
+       item.status="err"; item.msg="Drive err: "+xhr.status+" / "+xhr.responseText.slice(0,100);
         results.push({ok:false}); renderFileList();
         envoyerSuivant(queue, idx+1, totalMo, results);
-      };
-     alert("Envoi vers Drive. Token="+token.slice(0,15)+"... Fichier="+item.file.name+" Taille="+item.file.size); 
+      };   
     xhr.send(formData);
   });
 }
