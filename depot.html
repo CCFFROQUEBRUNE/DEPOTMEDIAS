@@ -301,7 +301,8 @@ function envoyerSuivant(queue, idx, totalMo, results) {
         results.push({ok:false}); renderFileList();
         envoyerSuivant(queue, idx+1, totalMo, results);
       };
-      xhr.send(formData);
+     alert("Envoi vers Drive. Token="+token.slice(0,15)+"... Fichier="+item.file.name+" Taille="+item.file.size); 
+    xhr.send(formData);
   });
 }
 
