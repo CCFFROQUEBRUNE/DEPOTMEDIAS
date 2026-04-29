@@ -258,6 +258,7 @@ function envoyerSuivant(queue, idx, totalMo, results) {
 
     setProgress(15);
     var token    = r.token;
+    console.log("TOKEN:", token ? token.slice(0,20)+"..." : "VIDE");
     var folderId = r.folderId;
     var newName  = r.newName;
     var mimeType = r.mimeType;
