@@ -1,1 +1,294 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Dépôt Médias — CCFF RSA</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
+:root{--bg:#0f1923;--surface:#1a2635;--border:#2a3a4a;--accent:#e85d26;--accent2:#f5a623;--ok:#27ae60;--err:#e74c3c;--text:#e8edf2;--muted:#7a8fa6;--radius:14px;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px 16px 40px;}
+header{width:100%;max-width:480px;display:flex;align-items:center;gap:12px;padding:16px 0 24px;}
+.logo-flame{width:42px;height:42px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
+.header-text h1{font-size:1.1rem;font-weight:700;}
+.header-text p{font-size:.78rem;color:var(--muted);margin-top:2px;}
+.card{width:100%;max-width:480px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:28px 24px;margin-bottom:16px;}
+.card-title{font-size:.72rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:18px;}
+.event-badge{background:linear-gradient(135deg,#1e3a5f,#162d4a);border:1px solid #2a4a6a;border-radius:10px;padding:14px 18px;display:flex;align-items:center;gap:12px;margin-bottom:22px;}
+.event-badge .icon{font-size:28px;}
+.event-badge .info h2{font-size:1rem;font-weight:700;}
+.event-badge .info p{font-size:.78rem;color:var(--muted);margin-top:2px;}
+.code-row{display:flex;gap:10px;align-items:stretch;}
+.code-input{flex:1;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-family:'Outfit',monospace;font-size:2rem;font-weight:700;letter-spacing:.3em;text-align:center;padding:14px 12px;outline:none;transition:border-color .2s;}
+.code-input:focus{border-color:var(--accent);}
+.code-input.error{border-color:var(--err);animation:shake .3s;}
+@keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-6px);}75%{transform:translateX(6px);}}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:10px;cursor:pointer;font-family:'Outfit',sans-serif;font-weight:600;transition:opacity .15s,transform .1s;user-select:none;}
+.btn:active{transform:scale(.97);}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none;}
+.btn-primary{background:var(--accent);color:#fff;padding:14px 22px;font-size:.95rem;width:100%;margin-top:16px;}
+.btn-primary:hover:not(:disabled){opacity:.88;}
+.btn-validate{background:var(--accent);color:#fff;padding:0 20px;font-size:.9rem;border-radius:10px;white-space:nowrap;}
+.btn-secondary{background:transparent;color:var(--muted);border:1px solid var(--border);padding:10px 18px;font-size:.85rem;width:100%;margin-top:8px;}
+.dropzone{border:2px dashed var(--border);border-radius:var(--radius);padding:36px 20px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;position:relative;}
+.dropzone:hover,.dropzone.drag{border-color:var(--accent);background:rgba(232,93,38,.05);}
+.dropzone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.dropzone .dz-icon{font-size:40px;margin-bottom:10px;}
+.dropzone .dz-title{font-size:1rem;font-weight:600;margin-bottom:4px;}
+.dropzone .dz-sub{font-size:.78rem;color:var(--muted);line-height:1.5;}
+.file-list{display:flex;flex-direction:column;gap:10px;margin-top:16px;}
+.file-item{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:12px;}
+.fi-icon{font-size:22px;flex-shrink:0;}
+.fi-info{flex:1;min-width:0;}
+.fi-name{font-size:.88rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.fi-size{font-size:.75rem;color:var(--muted);margin-top:2px;}
+.progress-bar-wrap{background:rgba(255,255,255,.08);border-radius:999px;height:6px;margin-top:8px;overflow:hidden;}
+.progress-bar{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:999px;transition:width .2s;}
+.quota-wrap{margin-top:16px;}
+.quota-label{display:flex;justify-content:space-between;font-size:.78rem;color:var(--muted);margin-bottom:6px;}
+.quota-bar-wrap{background:var(--bg);border-radius:999px;height:8px;overflow:hidden;}
+.quota-bar{height:100%;background:linear-gradient(90deg,var(--ok),var(--accent2));border-radius:999px;transition:width .5s;}
+.quota-bar.warn{background:linear-gradient(90deg,var(--accent2),var(--err));}
+.alert{border-radius:10px;padding:12px 16px;font-size:.85rem;margin-top:12px;display:none;}
+.alert.show{display:block;}
+.alert-ok{background:rgba(39,174,96,.15);border:1px solid rgba(39,174,96,.3);color:#5dde8f;}
+.alert-err{background:rgba(231,76,60,.15);border:1px solid rgba(231,76,60,.3);color:#ff8f85;}
+#step-upload,#step-done{display:none;}
+footer{margin-top:auto;padding-top:30px;font-size:.72rem;color:var(--muted);text-align:center;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo-flame">&#128293;</div>
+  <div class="header-text">
+    <h1>CCFF Roquebrune-sur-Argens</h1>
+    <p>Dépôt de médias sécurisé</p>
+  </div>
+</header>
 
+<div class="card" id="step-code">
+  <div class="card-title">Accès bénévole</div>
+  <div class="event-badge">
+    <div class="icon">&#128203;</div>
+    <div class="info"><h2 id="event-label">...</h2><p>Vérification du code requise</p></div>
+  </div>
+  <label style="font-size:.85rem;color:var(--muted);display:block;margin-bottom:10px;">Entrez votre code d'accès (4 chiffres)</label>
+  <div class="code-row">
+    <input type="tel" id="code-input" class="code-input" maxlength="4" placeholder="••••" autocomplete="off" inputmode="numeric">
+    <button class="btn btn-validate" id="btn-validate" onclick="validerCode()">OK</button>
+  </div>
+  <div class="alert alert-err" id="alert-code"></div>
+</div>
+
+<div class="card" id="step-upload">
+  <div class="card-title">Déposer vos médias</div>
+  <div class="quota-wrap">
+    <div class="quota-label"><span>Quota utilisé</span><span id="quota-text">— / —</span></div>
+    <div class="quota-bar-wrap"><div class="quota-bar" id="quota-bar" style="width:0%"></div></div>
+  </div>
+  <div class="dropzone" id="dropzone" style="margin-top:20px;">
+    <input type="file" id="file-input" multiple accept="image/*,video/*" onchange="onFilesSelected(this.files)">
+    <div class="dz-icon">&#128248;</div>
+    <div class="dz-title">Appuyez pour ajouter des fichiers</div>
+    <div class="dz-sub">Photos et vidéos acceptées<br>Max <span id="max-photo">30</span> Mo/photo · <span id="max-video">100</span> Mo/vidéo</div>
+  </div>
+  <div class="file-list" id="file-list"></div>
+  <div class="alert alert-err" id="alert-upload"></div>
+  <button class="btn btn-primary" id="btn-upload" onclick="envoyerFichiers()" disabled>&#11014;&#65039; Envoyer les fichiers</button>
+  <button class="btn btn-secondary" onclick="document.getElementById('file-input').click()">+ Ajouter d'autres fichiers</button>
+</div>
+
+<div class="card" id="step-done">
+  <div style="text-align:center;padding:20px 0;">
+    <div style="font-size:56px;margin-bottom:16px;">&#9989;</div>
+    <h2 style="font-size:1.3rem;margin-bottom:8px;">Dépôt réussi !</h2>
+    <p style="color:var(--muted);font-size:.9rem;line-height:1.6;" id="done-summary"></p>
+    <button class="btn btn-primary" style="margin-top:24px;" onclick="recommencer()">Déposer d'autres fichiers</button>
+  </div>
+</div>
+
+<footer>CCFF RSA · Dépôt sécurisé · v2.0</footer>
+
+<script>
+var AS_URL     = "https://script.google.com/macros/s/AKfycbw19-IYtOo3TcW9YP4VH_703xnnzbL4s43bLDi47UD8IZl5OCn7c0oltxcus7g_Gfei/exec";
+var EVENT_ID   = new URLSearchParams(window.location.search).get("event") || "";
+var SESSION_ID = localStorage.getItem("dm_session") || genId();
+localStorage.setItem("dm_session", SESSION_ID);
+
+var codeValide    = "";
+var quotaMo       = 30;
+var maxPhotoMo    = 30;
+var maxVideoMo    = 100;
+var fichiersQueue = [];
+var CHUNK_SIZE    = 7000;
+
+window.onload = function() {
+  document.getElementById("event-label").textContent = EVENT_ID || "Événement non spécifié";
+  document.getElementById("code-input").addEventListener("keydown", function(e){ if(e.key==="Enter") validerCode(); });
+  var dz = document.getElementById("dropzone");
+  dz.addEventListener("dragover",  function(e){ e.preventDefault(); dz.classList.add("drag"); });
+  dz.addEventListener("dragleave", function()  { dz.classList.remove("drag"); });
+  dz.addEventListener("drop",      function(e){ e.preventDefault(); dz.classList.remove("drag"); onFilesSelected(e.dataTransfer.files); });
+};
+
+function validerCode() {
+  var code = document.getElementById("code-input").value.trim();
+  if (code.length !== 4) { showAlert("alert-code","Entrez 4 chiffres","err"); return; }
+  var btn = document.getElementById("btn-validate");
+  btn.disabled = true; btn.textContent = "...";
+  callAS({ action:"checkCode", eventId:EVENT_ID, code:code }, function(r) {
+    btn.disabled = false; btn.textContent = "OK";
+    if (r.ok) {
+      codeValide = code; quotaMo = r.quotaMo||30; maxPhotoMo = r.maxPhotoMo||30; maxVideoMo = r.maxVideoMo||100;
+      document.getElementById("max-photo").textContent = maxPhotoMo;
+      document.getElementById("max-video").textContent = maxVideoMo;
+      show("step-code",false); show("step-upload",true); rafraichirQuota();
+    } else {
+      var inp = document.getElementById("code-input");
+      inp.classList.add("error"); setTimeout(function(){ inp.classList.remove("error"); },600);
+      showAlert("alert-code", r.message||"Code incorrect", "err");
+    }
+  });
+}
+
+function onFilesSelected(files) {
+  Array.from(files).forEach(function(f) {
+    var isPhoto = f.type.startsWith("image/");
+    var isVideo = f.type.startsWith("video/");
+    var maxMo   = isVideo ? maxVideoMo : maxPhotoMo;
+    var sizeMo  = f.size/(1024*1024);
+    var status  = "pending", msg = formatMo(sizeMo);
+    if (!isPhoto && !isVideo) { status="err"; msg="Type non autorisé"; }
+    else if (sizeMo > maxMo)  { status="err"; msg="Trop volumineux (max "+maxMo+" Mo)"; }
+    fichiersQueue.push({file:f, status:status, msg:msg});
+  });
+  renderFileList(); majBtnUpload();
+}
+
+function renderFileList() {
+  var el = document.getElementById("file-list");
+  el.innerHTML = "";
+  fichiersQueue.forEach(function(item,i) {
+    var isVideo = item.file.type.startsWith("video/");
+    var icon = item.status==="ok"?"✅":item.status==="err"?"❌":item.status==="uploading"?"⏳":(isVideo?"🎬":"🖼️");
+    var div = document.createElement("div");
+    div.className = "file-item";
+    div.innerHTML = '<div class="fi-icon">'+icon+'</div>'+
+      '<div class="fi-info">'+
+        '<div class="fi-name">'+esc(item.file.name)+'</div>'+
+        '<div class="fi-size">'+item.msg+'</div>'+
+        (item.status==="uploading"?'<div class="progress-bar-wrap"><div class="progress-bar" id="pb'+i+'" style="width:0%"></div></div>':'')+
+      '</div>';
+    el.appendChild(div);
+  });
+}
+
+function majBtnUpload() {
+  document.getElementById("btn-upload").disabled = !fichiersQueue.some(function(f){ return f.status==="pending"; });
+}
+
+function envoyerFichiers() {
+  var pending = fichiersQueue.filter(function(f){ return f.status==="pending"; });
+  if (!pending.length) return;
+  document.getElementById("btn-upload").disabled = true;
+  envoyerSuivant(pending, 0, 0, []);
+}
+
+function envoyerSuivant(queue, idx, totalMo, results) {
+  if (idx >= queue.length) {
+    rafraichirQuota();
+    var ok  = results.filter(function(r){ return r.ok; }).length;
+    var err = results.filter(function(r){ return !r.ok; }).length;
+    if (err === 0) {
+      show("step-upload",false); show("step-done",true);
+      document.getElementById("done-summary").textContent = ok+" fichier"+(ok>1?"s":"")+" déposé"+(ok>1?"s":"")+" ("+formatMo(totalMo)+")";
+    } else {
+      showAlert("alert-upload", err+" fichier(s) en erreur.", "err");
+      renderFileList(); majBtnUpload();
+    }
+    return;
+  }
+
+  var item = queue[idx];
+  item.status = "uploading"; renderFileList();
+
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var b64Full    = e.target.result.split(",")[1];
+    var uploadId   = genId();
+    var chunks     = [];
+    for (var i=0; i<b64Full.length; i+=CHUNK_SIZE) chunks.push(b64Full.slice(i,i+CHUNK_SIZE));
+    var totalChunks = chunks.length;
+
+    function setProgress(pct) { var pb=document.getElementById("pb"+idx); if(pb) pb.style.width=pct+"%"; }
+
+    function envoyerChunk(ci) {
+      if (ci >= totalChunks) {
+        setProgress(95);
+        callAS({
+          action:"finalizeUpload", eventId:EVENT_ID, code:codeValide,
+          sessionId:SESSION_ID, uploadId:uploadId,
+          totalChunks:String(totalChunks), fileName:item.file.name, mimeType:item.file.type
+        }, function(r) {
+          setProgress(100);
+          item.status = r.ok ? "ok" : "err";
+          item.msg    = r.ok ? ("✓ "+r.fileName) : (r.message||"Erreur");
+          results.push(r); renderFileList();
+          envoyerSuivant(queue, idx+1, totalMo+(r.ok?r.sizeMo:0), results);
+        });
+        return;
+      }
+      callAS({
+        action:"uploadChunk", eventId:EVENT_ID, code:codeValide,
+        uploadId:uploadId, chunkIndex:String(ci), chunkData:chunks[ci]
+      }, function(r) {
+        if (!r.ok) {
+          item.status="err"; item.msg=r.message||"Erreur chunk "+ci;
+          results.push(r); renderFileList();
+          envoyerSuivant(queue, idx+1, totalMo, results);
+          return;
+        }
+        setProgress(Math.round((ci+1)/totalChunks*90));
+        envoyerChunk(ci+1);
+      });
+    }
+    envoyerChunk(0);
+  };
+  reader.readAsDataURL(item.file);
+}
+
+function rafraichirQuota() {
+  callAS({ action:"getQuota", eventId:EVENT_ID, code:codeValide, sessionId:SESSION_ID }, function(r) {
+    if (!r.ok) return;
+    var pct = Math.min(100,(r.usedMo/r.quotaMo)*100);
+    document.getElementById("quota-text").textContent = formatMo(r.usedMo)+" / "+formatMo(r.quotaMo);
+    var bar = document.getElementById("quota-bar");
+    bar.style.width = pct+"%";
+    bar.className = "quota-bar"+(pct>75?" warn":"");
+  });
+}
+
+function recommencer() { fichiersQueue=[]; show("step-done",false); show("step-upload",true); renderFileList(); majBtnUpload(); rafraichirQuota(); }
+function show(id,v){ document.getElementById(id).style.display=v?"block":"none"; }
+function showAlert(id,msg,type){ var el=document.getElementById(id); el.textContent=msg; el.className="alert alert-"+type+" show"; }
+function formatMo(mo){ if(!mo||mo===0) return "0 Mo"; if(mo<1) return Math.round(mo*1024)+" Ko"; return (Math.round(mo*10)/10)+" Mo"; }
+function esc(s){ return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function genId(){ return Math.random().toString(36).slice(2)+Date.now().toString(36); }
+
+var _cbIdx = 0;
+function callAS(params, cb) {
+  var n   = ++_cbIdx;
+  var key = "_cb" + n;
+  var url = AS_URL + "?callback=" + key;
+  for (var k in params) url += "&" + encodeURIComponent(k) + "=" + encodeURIComponent(params[k]);
+  var tid = setTimeout(function(){ delete window[key]; cb({ok:false,message:"Timeout"}); }, 60000);
+  window[key] = function(data){ clearTimeout(tid); delete window[key]; cb(data); };
+  var s = document.createElement("script");
+  s.src = url;
+  s.onerror = function(){ clearTimeout(tid); delete window[key]; cb({ok:false,message:"Erreur réseau"}); };
+  document.head.appendChild(s);
+}
+</script>
+</body>
+</html>
