@@ -125,7 +125,7 @@ footer{margin-top:auto;padding-top:30px;font-size:.72rem;color:var(--muted);text
   </div>
 </div>
 
-<footer>CCFF RSA · Dépôt sécurisé · v5.0</footer>
+<footer>CCFF RSA · Dépôt sécurisé · v6.0</footer>
 
 <script>
 var AS_URL     = "https://script.google.com/macros/s/AKfycbw19-IYtOo3TcW9YP4VH_703xnnzbL4s43bLDi47UD8IZl5OCn7c0oltxcus7g_Gfei/exec";
@@ -133,11 +133,11 @@ var EVENT_ID   = new URLSearchParams(window.location.search).get("event") || "";
 var SESSION_ID = localStorage.getItem("dm_session") || genId();
 localStorage.setItem("dm_session", SESSION_ID);
 
-var codeValide    = "";
-var quotaPhotoMo  = 30;
-var quotaVideoMo  = 200;
-var maxPhotoMo    = 30;
-var maxVideoMo    = 100;
+var codeValide   = "";
+var quotaPhotoMo = 30;
+var quotaVideoMo = 200;
+var maxPhotoMo   = 30;
+var maxVideoMo   = 100;
 var fichiersQueue = [];
 
 window.onload = function() {
@@ -235,7 +235,6 @@ function envoyerSuivant(queue, idx, totalMo, results) {
   }
 
   var item   = queue[idx];
-  var sizeMo = item.file.size/(1024*1024);
   item.status = "uploading"; renderFileList();
 
   function setProgress(pct) {
@@ -243,65 +242,41 @@ function envoyerSuivant(queue, idx, totalMo, results) {
     if (pb) pb.style.width = pct+"%";
   }
 
-  // Étape 1 : obtenir le token + nom fichier
-  callGET({
-    action:"getUploadToken", eventId:EVENT_ID, code:codeValide,
-    sessionId:SESSION_ID, fileName:item.file.name,
-    mimeType:item.file.type, sizeMo:String(Math.round(sizeMo*100)/100)
-  }, function(r) {
-    if (!r.ok) {
-      item.status="err"; item.msg=r.message||"Refusé";
-      results.push(r); renderFileList();
-      envoyerSuivant(queue, idx+1, totalMo, results);
-      return;
-    }
+  setProgress(10);
 
-    setProgress(15);
-    var token    = r.token;
-    console.log("TOKEN:", token ? token.slice(0,20)+"..." : "VIDE");
-    var folderId = r.folderId;
-    var newName  = r.newName;
-    var mimeType = r.mimeType;
+  // Envoi binaire direct vers Apps Script via fetch
+  // Les params passent en URL, le fichier brut dans le body
+  var url = AS_URL
+    + "?eventId="   + encodeURIComponent(EVENT_ID)
+    + "&code="      + encodeURIComponent(codeValide)
+    + "&sessionId=" + encodeURIComponent(SESSION_ID)
+    + "&fileName="  + encodeURIComponent(item.file.name)
+    + "&mimeType="  + encodeURIComponent(item.file.type);
 
-    // Étape 2 : upload direct vers Google Drive API (multipart)
-    var metadata = JSON.stringify({ name: newName, parents: [folderId] });
+  setProgress(20);
 
-// Upload binaire direct - FormData sans base64
-      setProgress(20);
-      var formData = new FormData();
-      formData.append("metadata", new Blob([metadata], {type:"application/json"}));
-      formData.append("file", item.file);
-      setProgress(35);
-      var xhr = new XMLHttpRequest();
-      xhr.open("POST", "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", true);
-      xhr.setRequestHeader("Authorization", "Bearer " + token);
-      xhr.upload.onprogress = function(e) {
-        if (e.lengthComputable) setProgress(35 + Math.round(e.loaded/e.total*55));
-      };
-      xhr.onload = function() {
-        setProgress(90);
-        if (xhr.status === 200 || xhr.status === 201) {
-          callGET({ action:"confirmUpload", newName:newName }, function(cr) {
-            setProgress(100);
-            item.status = cr.ok ? "ok" : "err";
-            item.msg    = cr.ok ? ("✓ "+newName) : (cr.message||"Erreur");
-            results.push(cr);
-            if (cr.ok && cr.type) totalMo[cr.type] = (totalMo[cr.type]||0) + (cr.sizeMo||0);
-            renderFileList();
-            envoyerSuivant(queue, idx+1, totalMo, results);
-          });
-        } else {
-          item.status="err"; item.msg="Erreur Drive ("+xhr.status+")";
-          results.push({ok:false}); renderFileList();
-          envoyerSuivant(queue, idx+1, totalMo, results);
-        }
-      };
-      xhr.onerror = function() {
-       item.status="err"; item.msg="Drive err: "+xhr.status+" / "+xhr.responseText.slice(0,100);
-        results.push({ok:false}); renderFileList();
-        envoyerSuivant(queue, idx+1, totalMo, results);
-      };   
-    xhr.send(formData);
+  fetch(url, {
+    method: "POST",
+    body:   item.file,   // fichier binaire brut — pas de base64 !
+    headers: { "Content-Type": item.file.type }
+  })
+  .then(function(resp) {
+    setProgress(85);
+    return resp.json();
+  })
+  .then(function(r) {
+    setProgress(100);
+    item.status = r.ok ? "ok" : "err";
+    item.msg    = r.ok ? ("✓ "+r.fileName) : (r.message||"Erreur");
+    results.push(r);
+    if (r.ok && r.type) totalMo[r.type] = (totalMo[r.type]||0) + (r.sizeMo||0);
+    renderFileList();
+    envoyerSuivant(queue, idx+1, totalMo, results);
+  })
+  .catch(function(err) {
+    item.status="err"; item.msg="Erreur réseau: "+err.message;
+    results.push({ok:false}); renderFileList();
+    envoyerSuivant(queue, idx+1, totalMo, results);
   });
 }
 
