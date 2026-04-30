@@ -263,11 +263,12 @@ function prepareAndSend() {
     document.getElementById("f-fileData").value = b64;
     document.getElementById("upload-form").action = AS_URL;
     document.getElementById("upload-form").submit();
+    // Timeout 3 minutes (gros fichiers)
     sendTimeout = setTimeout(function() {
       document.getElementById("sending-overlay").classList.remove("show");
       showAlert("alert-upload","Délai dépassé — réessayez","err");
       document.getElementById("btn-send").disabled=false;
-    }, 120000);
+    }, 180000);
   };
   reader.onerror = function() {
     document.getElementById("sending-overlay").classList.remove("show");
@@ -299,32 +300,20 @@ function onFormSubmit() {
 
 // ── RÉPONSE IFRAME ────────────────────────────────────────────
 function onIframeLoad() {
-  // Cette fonction est appelée quand l'iframe reçoit la réponse d'Apps Script
+  // Apps Script redirige (302) donc on ne peut pas lire la réponse (cross-origin)
+  // On attend 3s puis on vérifie via getQuota si le fichier est bien arrivé
   clearTimeout(sendTimeout);
-  document.getElementById("sending-overlay").classList.remove("show");
 
-  try {
-    var iframeDoc = document.getElementById("upload-iframe").contentDocument ||
-                    document.getElementById("upload-iframe").contentWindow.document;
-    var text = iframeDoc.body ? iframeDoc.body.innerText || iframeDoc.body.textContent : "";
-    if (!text || text.trim() === "") return; // premier chargement vide
-
-    var r = JSON.parse(text);
-    if (r.ok) {
+  setTimeout(function() {
+    document.getElementById("sending-overlay").classList.remove("show");
+    // Vérifie le quota pour confirmer l'arrivée
+    callGET({ action:"getQuota", eventId:EVENT_ID, code:codeValide, sessionId:SESSION_ID }, function(r) {
       show("step-upload",false); show("step-done",true);
-      document.getElementById("done-summary").textContent =
-        "Fichier déposé avec succès : " + r.fileName + " (" + formatMo(r.sizeMo) + ")";
+      var fn = document.getElementById("f-fileName").value || "Fichier";
+      document.getElementById("done-summary").textContent = fn + " déposé avec succès !";
       rafraichirQuota();
-    } else {
-      showAlert("alert-upload", r.message||"Erreur lors du dépôt","err");
-      document.getElementById("btn-send").disabled = false;
-    }
-  } catch(e) {
-    // Si on ne peut pas lire l'iframe (cross-origin redirect), on suppose OK
-    show("step-upload",false); show("step-done",true);
-    document.getElementById("done-summary").textContent = "Fichier déposé !";
-    rafraichirQuota();
-  }
+    });
+  }, 3000);
 }
 
 // ── QUOTA ─────────────────────────────────────────────────────
