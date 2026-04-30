@@ -117,15 +117,18 @@ footer{margin-top:auto;padding-top:30px;font-size:.72rem;color:var(--muted);text
     </div>
   </div>
 
-  <!-- Formulaire HTML natif — pas de fetch, pas de XHR -->
-  <form id="upload-form" method="POST" enctype="multipart/form-data" target="upload-iframe" onsubmit="onFormSubmit()">
+  <!-- Formulaire HTML natif avec base64 dans hidden field -->
+  <form id="upload-form" method="POST" target="upload-iframe" onsubmit="onFormSubmit()">
     <input type="hidden" name="action"    value="uploadFile">
     <input type="hidden" name="eventId"   id="f-eventId">
     <input type="hidden" name="code"      id="f-code">
     <input type="hidden" name="sessionId" id="f-sessionId">
+    <input type="hidden" name="fileName"  id="f-fileName">
+    <input type="hidden" name="mimeType"  id="f-mimeType">
+    <input type="hidden" name="fileData"  id="f-fileData">
 
     <div class="file-zone" style="margin-top:16px;">
-      <input type="file" name="file" id="file-input" accept="image/*,video/*" onchange="onFileSelected(this)" aria-label="Sélectionner un fichier">
+      <input type="file" id="file-input" accept="image/*,video/*" onchange="onFileSelected(this)" aria-label="Sélectionner un fichier">
       <div class="dz-icon">&#128248;</div>
       <div class="dz-title">Appuyez pour sélectionner un fichier</div>
       <div class="dz-sub">Photo ou vidéo<br>Max <span id="max-photo">30</span> Mo/photo · <span id="max-video">100</span> Mo/vidéo</div>
@@ -138,7 +141,7 @@ footer{margin-top:auto;padding-top:30px;font-size:.72rem;color:var(--muted);text
 
     <div class="alert alert-err" id="alert-upload"></div>
 
-    <button type="submit" class="btn btn-primary" id="btn-send" disabled>
+    <button type="button" class="btn btn-primary" id="btn-send" onclick="prepareAndSend()" disabled>
       &#11014;&#65039; Envoyer ce fichier
     </button>
   </form>
@@ -230,28 +233,51 @@ function onFileSelected(input) {
   var isVideo = f.type.startsWith("video/");
   var maxMo   = isVideo ? maxVideoMo : maxPhotoMo;
   var sizeMo  = f.size/(1024*1024);
-
   hideAlert("alert-upload");
-
   if (!isPhoto && !isVideo) {
-    showAlert("alert-upload","Type non autorisé (photos et vidéos uniquement)","err");
-    input.value = ""; document.getElementById("file-selected").style.display="none";
-    document.getElementById("btn-send").disabled = true;
-    return;
+    showAlert("alert-upload","Type non autorisé","err");
+    input.value=""; document.getElementById("file-selected").style.display="none";
+    document.getElementById("btn-send").disabled=true; return;
   }
   if (sizeMo > maxMo) {
-    showAlert("alert-upload","Fichier trop volumineux (max "+maxMo+" Mo)","err");
-    input.value = ""; document.getElementById("file-selected").style.display="none";
-    document.getElementById("btn-send").disabled = true;
-    return;
+    showAlert("alert-upload","Trop volumineux (max "+maxMo+" Mo)","err");
+    input.value=""; document.getElementById("file-selected").style.display="none";
+    document.getElementById("btn-send").disabled=true; return;
   }
-
-  currentFile = f;
-  document.getElementById("fs-name").textContent = (isVideo?"🎬":"🖼️") + " " + f.name;
-  document.getElementById("fs-size").textContent = formatMo(sizeMo);
-  document.getElementById("file-selected").style.display = "block";
-  document.getElementById("btn-send").disabled = false;
+  currentFile=f;
+  document.getElementById("fs-name").textContent=(isVideo?"🎬":"🖼️")+" "+f.name;
+  document.getElementById("fs-size").textContent=formatMo(sizeMo);
+  document.getElementById("file-selected").style.display="block";
+  document.getElementById("btn-send").disabled=false;
 }
+
+function prepareAndSend() {
+  if (!currentFile) return;
+  document.getElementById("btn-send").disabled=true;
+  document.getElementById("sending-overlay").classList.add("show");
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    var b64 = ev.target.result.split(",")[1];
+    document.getElementById("f-fileName").value = currentFile.name;
+    document.getElementById("f-mimeType").value = currentFile.type;
+    document.getElementById("f-fileData").value = b64;
+    document.getElementById("upload-form").action = AS_URL;
+    document.getElementById("upload-form").submit();
+    sendTimeout = setTimeout(function() {
+      document.getElementById("sending-overlay").classList.remove("show");
+      showAlert("alert-upload","Délai dépassé — réessayez","err");
+      document.getElementById("btn-send").disabled=false;
+    }, 120000);
+  };
+  reader.onerror = function() {
+    document.getElementById("sending-overlay").classList.remove("show");
+    showAlert("alert-upload","Erreur lecture fichier","err");
+    document.getElementById("btn-send").disabled=false;
+  };
+  reader.readAsDataURL(currentFile);
+}
+
+function onFormSubmit() { return true; }
 
 // ── SOUMISSION FORM ──────────────────────────────────────────
 function onFormSubmit() {
