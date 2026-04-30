@@ -31,30 +31,31 @@ header{width:100%;max-width:480px;display:flex;align-items:center;gap:12px;paddi
 .btn-primary:hover:not(:disabled){opacity:.88;}
 .btn-validate{background:var(--accent);color:#fff;padding:0 20px;font-size:.9rem;border-radius:10px;white-space:nowrap;}
 .btn-secondary{background:transparent;color:var(--muted);border:1px solid var(--border);padding:10px 18px;font-size:.85rem;width:100%;margin-top:8px;}
-.dropzone{border:2px dashed var(--border);border-radius:var(--radius);padding:36px 20px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;position:relative;}
-.dropzone:hover,.dropzone.drag{border-color:var(--accent);background:rgba(232,93,38,.05);}
-.dropzone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
-.dropzone .dz-icon{font-size:40px;margin-bottom:10px;}
-.dropzone .dz-title{font-size:1rem;font-weight:600;margin-bottom:4px;}
-.dropzone .dz-sub{font-size:.78rem;color:var(--muted);line-height:1.5;}
-.file-list{display:flex;flex-direction:column;gap:10px;margin-top:16px;}
-.file-item{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:12px;}
-.fi-icon{font-size:22px;flex-shrink:0;}
-.fi-info{flex:1;min-width:0;}
-.fi-name{font-size:.88rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.fi-size{font-size:.75rem;color:var(--muted);margin-top:2px;}
-.progress-bar-wrap{background:rgba(255,255,255,.08);border-radius:999px;height:6px;margin-top:8px;overflow:hidden;}
-.progress-bar{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:999px;transition:width .3s;}
+.file-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:36px 20px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;position:relative;}
+.file-zone:hover{border-color:var(--accent);background:rgba(232,93,38,.05);}
+.file-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.file-zone .dz-icon{font-size:40px;margin-bottom:10px;}
+.file-zone .dz-title{font-size:1rem;font-weight:600;margin-bottom:4px;}
+.file-zone .dz-sub{font-size:.78rem;color:var(--muted);line-height:1.5;}
+.file-selected{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;margin-top:12px;display:none;}
+.file-selected .fs-name{font-size:.9rem;font-weight:600;}
+.file-selected .fs-size{font-size:.75rem;color:var(--muted);margin-top:3px;}
 .quota-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px;}
 .quota-box{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px 14px;}
-.quota-box .qb-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
-.quota-box .qb-label{font-size:.72rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);}
-.quota-box .qb-val{font-size:.72rem;color:var(--text);}
+.qb-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.qb-label{font-size:.72rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);}
+.qb-val{font-size:.72rem;color:var(--text);}
 .quota-bar-wrap{background:rgba(255,255,255,.06);border-radius:999px;height:6px;overflow:hidden;}
 .quota-bar{height:100%;border-radius:999px;transition:width .5s;}
 .quota-bar.photo{background:linear-gradient(90deg,#27ae60,#f5a623);}
 .quota-bar.video{background:linear-gradient(90deg,#3498db,#9b59b6);}
 .quota-bar.warn{background:linear-gradient(90deg,var(--accent2),var(--err));}
+.sending-overlay{display:none;position:fixed;inset:0;background:rgba(15,25,35,.92);z-index:100;flex-direction:column;align-items:center;justify-content:center;gap:20px;}
+.sending-overlay.show{display:flex;}
+.spinner{width:48px;height:48px;border:4px solid rgba(255,255,255,.15);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.sending-label{font-size:1rem;font-weight:600;color:var(--text);}
+.sending-sub{font-size:.8rem;color:var(--muted);}
 .alert{border-radius:10px;padding:12px 16px;font-size:.85rem;margin-top:12px;display:none;}
 .alert.show{display:block;}
 .alert-ok{background:rgba(39,174,96,.15);border:1px solid rgba(39,174,96,.3);color:#5dde8f;}
@@ -64,6 +65,14 @@ footer{margin-top:auto;padding-top:30px;font-size:.72rem;color:var(--muted);text
 </style>
 </head>
 <body>
+
+<!-- Overlay envoi en cours -->
+<div class="sending-overlay" id="sending-overlay">
+  <div class="spinner"></div>
+  <div class="sending-label">Envoi en cours...</div>
+  <div class="sending-sub">Ne fermez pas cette page</div>
+</div>
+
 <header>
   <div class="logo-flame">&#128293;</div>
   <div class="header-text">
@@ -72,6 +81,7 @@ footer{margin-top:auto;padding-top:30px;font-size:.72rem;color:var(--muted);text
   </div>
 </header>
 
+<!-- ÉTAPE 1 : CODE -->
 <div class="card" id="step-code">
   <div class="card-title">Accès bénévole</div>
   <div class="event-badge">
@@ -86,8 +96,10 @@ footer{margin-top:auto;padding-top:30px;font-size:.72rem;color:var(--muted);text
   <div class="alert alert-err" id="alert-code"></div>
 </div>
 
+<!-- ÉTAPE 2 : UPLOAD (un fichier à la fois via form natif) -->
 <div class="card" id="step-upload">
   <div class="card-title">Déposer vos médias</div>
+
   <div class="quota-grid">
     <div class="quota-box">
       <div class="qb-header">
@@ -104,28 +116,54 @@ footer{margin-top:auto;padding-top:30px;font-size:.72rem;color:var(--muted);text
       <div class="quota-bar-wrap"><div class="quota-bar video" id="quota-video-bar" style="width:0%"></div></div>
     </div>
   </div>
-  <div class="dropzone" id="dropzone" style="margin-top:16px;">
-    <input type="file" id="file-input" multiple accept="image/*,video/*" onchange="onFilesSelected(this.files)" aria-label="Sélectionner fichiers">
-    <div class="dz-icon">&#128248;</div>
-    <div class="dz-title">Appuyez pour ajouter des fichiers</div>
-    <div class="dz-sub">Photos et vidéos acceptées<br>Max <span id="max-photo">30</span> Mo/photo · <span id="max-video">100</span> Mo/vidéo</div>
-  </div>
-  <div class="file-list" id="file-list"></div>
-  <div class="alert alert-err" id="alert-upload"></div>
-  <button class="btn btn-primary" id="btn-upload" onclick="envoyerFichiers()" disabled>&#11014;&#65039; Envoyer les fichiers</button>
-  <button class="btn btn-secondary" onclick="document.getElementById('file-input').click()">+ Ajouter d'autres fichiers</button>
+
+  <!-- Formulaire HTML natif — pas de fetch, pas de XHR -->
+  <form id="upload-form" method="POST" enctype="multipart/form-data" target="upload-iframe" onsubmit="onFormSubmit()">
+    <input type="hidden" name="action"    value="uploadFile">
+    <input type="hidden" name="eventId"   id="f-eventId">
+    <input type="hidden" name="code"      id="f-code">
+    <input type="hidden" name="sessionId" id="f-sessionId">
+
+    <div class="file-zone" style="margin-top:16px;">
+      <input type="file" name="file" id="file-input" accept="image/*,video/*" onchange="onFileSelected(this)" aria-label="Sélectionner un fichier">
+      <div class="dz-icon">&#128248;</div>
+      <div class="dz-title">Appuyez pour sélectionner un fichier</div>
+      <div class="dz-sub">Photo ou vidéo<br>Max <span id="max-photo">30</span> Mo/photo · <span id="max-video">100</span> Mo/vidéo</div>
+    </div>
+
+    <div class="file-selected" id="file-selected">
+      <div class="fs-name" id="fs-name"></div>
+      <div class="fs-size" id="fs-size"></div>
+    </div>
+
+    <div class="alert alert-err" id="alert-upload"></div>
+
+    <button type="submit" class="btn btn-primary" id="btn-send" disabled>
+      &#11014;&#65039; Envoyer ce fichier
+    </button>
+  </form>
+
+  <button class="btn btn-secondary" style="margin-top:8px;" onclick="recommencer()">
+    + Déposer un autre fichier
+  </button>
 </div>
 
+<!-- ÉTAPE 3 : CONFIRMATION -->
 <div class="card" id="step-done">
   <div style="text-align:center;padding:20px 0;">
     <div style="font-size:56px;margin-bottom:16px;">&#9989;</div>
-    <h2 style="font-size:1.3rem;margin-bottom:8px;">Dépôt réussi !</h2>
+    <h2 style="font-size:1.3rem;margin-bottom:8px;">Fichier déposé !</h2>
     <p style="color:var(--muted);font-size:.9rem;line-height:1.6;" id="done-summary"></p>
-    <button class="btn btn-primary" style="margin-top:24px;" onclick="recommencer()">Déposer d'autres fichiers</button>
+    <button class="btn btn-primary" style="margin-top:24px;" onclick="recommencer()">
+      Déposer un autre fichier
+    </button>
   </div>
 </div>
 
-<footer>CCFF RSA · Dépôt sécurisé · v6.0</footer>
+<!-- iframe caché qui reçoit la réponse du form POST -->
+<iframe name="upload-iframe" id="upload-iframe" style="display:none"></iframe>
+
+<footer>CCFF RSA · Dépôt sécurisé · v7.0</footer>
 
 <script>
 var AS_URL     = "https://script.google.com/macros/s/AKfycbw19-IYtOo3TcW9YP4VH_703xnnzbL4s43bLDi47UD8IZl5OCn7c0oltxcus7g_Gfei/exec";
@@ -138,17 +176,18 @@ var quotaPhotoMo = 30;
 var quotaVideoMo = 200;
 var maxPhotoMo   = 30;
 var maxVideoMo   = 100;
-var fichiersQueue = [];
+var currentFile  = null;
+var sendTimeout  = null;
 
 window.onload = function() {
   document.getElementById("event-label").textContent = EVENT_ID || "Evenement non specifie";
   document.getElementById("code-input").addEventListener("keydown", function(e){ if(e.key==="Enter") validerCode(); });
-  var dz = document.getElementById("dropzone");
-  dz.addEventListener("dragover",  function(e){ e.preventDefault(); dz.classList.add("drag"); });
-  dz.addEventListener("dragleave", function()  { dz.classList.remove("drag"); });
-  dz.addEventListener("drop",      function(e){ e.preventDefault(); dz.classList.remove("drag"); onFilesSelected(e.dataTransfer.files); });
+
+  // Écoute la réponse de l'iframe après soumission du form
+  document.getElementById("upload-iframe").addEventListener("load", onIframeLoad);
 };
 
+// ── CODE ──────────────────────────────────────────────────────
 function validerCode() {
   var code = document.getElementById("code-input").value.trim();
   if (code.length !== 4) { showAlert("alert-code","Entrez 4 chiffres","err"); return; }
@@ -164,6 +203,11 @@ function validerCode() {
       maxVideoMo   = r.maxVideoMo   || 100;
       document.getElementById("max-photo").textContent = maxPhotoMo;
       document.getElementById("max-video").textContent = maxVideoMo;
+      // Configure le formulaire
+      document.getElementById("upload-form").action = AS_URL;
+      document.getElementById("f-eventId").value   = EVENT_ID;
+      document.getElementById("f-code").value       = codeValide;
+      document.getElementById("f-sessionId").value  = SESSION_ID;
       show("step-code",false); show("step-upload",true);
       rafraichirQuota();
     } else {
@@ -174,115 +218,86 @@ function validerCode() {
   });
 }
 
-function onFilesSelected(files) {
-  Array.from(files).forEach(function(f) {
-    var isPhoto = f.type.startsWith("image/");
-    var isVideo = f.type.startsWith("video/");
-    var maxMo   = isVideo ? maxVideoMo : maxPhotoMo;
-    var sizeMo  = f.size/(1024*1024);
-    var status  = "pending", msg = formatMo(sizeMo);
-    if (!isPhoto && !isVideo) { status="err"; msg="Type non autorisé"; }
-    else if (sizeMo > maxMo)  { status="err"; msg="Trop volumineux (max "+maxMo+" Mo)"; }
-    fichiersQueue.push({file:f, status:status, msg:msg});
-  });
-  renderFileList(); majBtnUpload();
-}
+// ── SÉLECTION FICHIER ─────────────────────────────────────────
+function onFileSelected(input) {
+  var f = input.files[0];
+  if (!f) return;
+  var isPhoto = f.type.startsWith("image/");
+  var isVideo = f.type.startsWith("video/");
+  var maxMo   = isVideo ? maxVideoMo : maxPhotoMo;
+  var sizeMo  = f.size/(1024*1024);
 
-function renderFileList() {
-  var el = document.getElementById("file-list");
-  el.innerHTML = "";
-  fichiersQueue.forEach(function(item,i) {
-    var isVideo = item.file.type.startsWith("video/");
-    var icon = item.status==="ok"?"✅":item.status==="err"?"❌":item.status==="uploading"?"⏳":(isVideo?"🎬":"🖼️");
-    var div = document.createElement("div");
-    div.className = "file-item";
-    div.innerHTML = '<div class="fi-icon">'+icon+'</div>'+
-      '<div class="fi-info">'+
-        '<div class="fi-name">'+esc(item.file.name)+'</div>'+
-        '<div class="fi-size">'+item.msg+'</div>'+
-        (item.status==="uploading"?'<div class="progress-bar-wrap"><div class="progress-bar" id="pb'+i+'" style="width:5%"></div></div>':'')+
-      '</div>';
-    el.appendChild(div);
-  });
-}
+  hideAlert("alert-upload");
 
-function majBtnUpload() {
-  document.getElementById("btn-upload").disabled = !fichiersQueue.some(function(f){ return f.status==="pending"; });
-}
-
-function envoyerFichiers() {
-  var pending = fichiersQueue.filter(function(f){ return f.status==="pending"; });
-  if (!pending.length) return;
-  document.getElementById("btn-upload").disabled = true;
-  envoyerSuivant(pending, 0, {photo:0,video:0}, []);
-}
-
-function envoyerSuivant(queue, idx, totalMo, results) {
-  if (idx >= queue.length) {
-    rafraichirQuota();
-    var ok  = results.filter(function(r){ return r.ok; }).length;
-    var err = results.filter(function(r){ return !r.ok; }).length;
-    if (err === 0) {
-      show("step-upload",false); show("step-done",true);
-      var tot = totalMo.photo + totalMo.video;
-      document.getElementById("done-summary").textContent =
-        ok+" fichier"+(ok>1?"s":"")+" déposé"+(ok>1?"s":"")+" ("+formatMo(tot)+")";
-    } else {
-      showAlert("alert-upload", err+" fichier(s) en erreur.", "err");
-      renderFileList(); majBtnUpload();
-    }
+  if (!isPhoto && !isVideo) {
+    showAlert("alert-upload","Type non autorisé (photos et vidéos uniquement)","err");
+    input.value = ""; document.getElementById("file-selected").style.display="none";
+    document.getElementById("btn-send").disabled = true;
+    return;
+  }
+  if (sizeMo > maxMo) {
+    showAlert("alert-upload","Fichier trop volumineux (max "+maxMo+" Mo)","err");
+    input.value = ""; document.getElementById("file-selected").style.display="none";
+    document.getElementById("btn-send").disabled = true;
     return;
   }
 
-  var item   = queue[idx];
-  item.status = "uploading"; renderFileList();
-
-  function setProgress(pct) {
-    var pb = document.getElementById("pb"+idx);
-    if (pb) pb.style.width = pct+"%";
-  }
-
-  setProgress(10);
-
-  // Envoi binaire direct vers Apps Script via fetch
-  // Les params passent en URL, le fichier brut dans le body
-  var url = AS_URL
-    + "?eventId="   + encodeURIComponent(EVENT_ID)
-    + "&code="      + encodeURIComponent(codeValide)
-    + "&sessionId=" + encodeURIComponent(SESSION_ID)
-    + "&fileName="  + encodeURIComponent(item.file.name)
-    + "&mimeType="  + encodeURIComponent(item.file.type);
-
-  setProgress(20);
-
-  // Envoi no-cors : fichier binaire brut, pas de lecture de réponse
-  fetch(url, {
-    method:  "POST",
-    body:    item.file,
-    mode:    "no-cors",
-    headers: { "Content-Type": item.file.type }
-  })
-  .then(function() {
-    setProgress(80);
-    return new Promise(function(resolve){ setTimeout(resolve, 4000); });
-  })
-  .then(function() {
-    setProgress(100);
-    item.status = "ok";
-    item.msg    = "✓ Fichier déposé";
-    var fakeR = {ok:true, type:item.file.type.startsWith("video/")?"video":"photo", sizeMo:Math.round(item.file.size/104857.6)/10};
-    results.push(fakeR);
-    totalMo[fakeR.type] = (totalMo[fakeR.type]||0) + fakeR.sizeMo;
-    renderFileList();
-    envoyerSuivant(queue, idx+1, totalMo, results);
-  })
-  .catch(function(err) {
-    item.status="err"; item.msg="Erreur réseau: "+err.message;
-    results.push({ok:false}); renderFileList();
-    envoyerSuivant(queue, idx+1, totalMo, results);
-  });
+  currentFile = f;
+  document.getElementById("fs-name").textContent = (isVideo?"🎬":"🖼️") + " " + f.name;
+  document.getElementById("fs-size").textContent = formatMo(sizeMo);
+  document.getElementById("file-selected").style.display = "block";
+  document.getElementById("btn-send").disabled = false;
 }
 
+// ── SOUMISSION FORM ──────────────────────────────────────────
+function onFormSubmit() {
+  if (!currentFile) return false;
+
+  // Affiche l'overlay "envoi en cours"
+  document.getElementById("sending-overlay").classList.add("show");
+  document.getElementById("btn-send").disabled = true;
+
+  // Timeout de sécurité (2 minutes)
+  sendTimeout = setTimeout(function() {
+    document.getElementById("sending-overlay").classList.remove("show");
+    showAlert("alert-upload","Délai dépassé — réessayez","err");
+    document.getElementById("btn-send").disabled = false;
+  }, 120000);
+
+  return true; // laisse le form se soumettre normalement
+}
+
+// ── RÉPONSE IFRAME ────────────────────────────────────────────
+function onIframeLoad() {
+  // Cette fonction est appelée quand l'iframe reçoit la réponse d'Apps Script
+  clearTimeout(sendTimeout);
+  document.getElementById("sending-overlay").classList.remove("show");
+
+  try {
+    var iframeDoc = document.getElementById("upload-iframe").contentDocument ||
+                    document.getElementById("upload-iframe").contentWindow.document;
+    var text = iframeDoc.body ? iframeDoc.body.innerText || iframeDoc.body.textContent : "";
+    if (!text || text.trim() === "") return; // premier chargement vide
+
+    var r = JSON.parse(text);
+    if (r.ok) {
+      show("step-upload",false); show("step-done",true);
+      document.getElementById("done-summary").textContent =
+        "Fichier déposé avec succès : " + r.fileName + " (" + formatMo(r.sizeMo) + ")";
+      rafraichirQuota();
+    } else {
+      showAlert("alert-upload", r.message||"Erreur lors du dépôt","err");
+      document.getElementById("btn-send").disabled = false;
+    }
+  } catch(e) {
+    // Si on ne peut pas lire l'iframe (cross-origin redirect), on suppose OK
+    show("step-upload",false); show("step-done",true);
+    document.getElementById("done-summary").textContent = "Fichier déposé !";
+    rafraichirQuota();
+  }
+}
+
+// ── QUOTA ─────────────────────────────────────────────────────
 function rafraichirQuota() {
   callGET({ action:"getQuota", eventId:EVENT_ID, code:codeValide, sessionId:SESSION_ID }, function(r) {
     if (!r.ok) return;
@@ -297,15 +312,21 @@ function rafraichirQuota() {
   });
 }
 
+// ── HELPERS ───────────────────────────────────────────────────
 function recommencer() {
-  fichiersQueue=[]; show("step-done",false); show("step-upload",true);
-  renderFileList(); majBtnUpload(); rafraichirQuota();
+  currentFile = null;
+  document.getElementById("file-input").value = "";
+  document.getElementById("file-selected").style.display = "none";
+  document.getElementById("btn-send").disabled = true;
+  hideAlert("alert-upload");
+  show("step-done",false); show("step-upload",true);
+  rafraichirQuota();
 }
 
 function show(id,v){ document.getElementById(id).style.display=v?"block":"none"; }
 function showAlert(id,msg,type){ var el=document.getElementById(id); el.textContent=msg; el.className="alert alert-"+type+" show"; }
+function hideAlert(id){ document.getElementById(id).className="alert"; }
 function formatMo(mo){ if(!mo||mo===0) return "0 Mo"; if(mo<1) return Math.round(mo*1024)+" Ko"; return (Math.round(mo*10)/10)+" Mo"; }
-function esc(s){ return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 function genId(){ return Math.random().toString(36).slice(2)+Date.now().toString(36); }
 
 var _cbIdx = 0;
