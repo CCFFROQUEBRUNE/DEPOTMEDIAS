@@ -255,11 +255,12 @@ function envoyerSuivant(queue, idx, totalMo, results) {
 
   setProgress(20);
 
-  fetch(url, {
-    method: "POST",
-    body:   item.file,   // fichier binaire brut — pas de base64 !
-    headers: { "Content-Type": item.file.type }
-  })
+fetch(url, {
+  method: "POST",
+  body:   item.file,
+  mode:   "no-cors",
+  headers: { "Content-Type": item.file.type }
+})
   .then(function(resp) {
     setProgress(85);
     return resp.json();
